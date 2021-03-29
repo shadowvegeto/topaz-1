@@ -68,6 +68,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "utils/puppetutils.h"
 #include "utils/synthutils.h"
 #include "utils/zoneutils.h"
+#include "unitychat.h"
 #include "zone.h"
 
 #include "items/item_flowerpot.h"
@@ -90,6 +91,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "packets/char_appearance.h"
 #include "packets/char_check.h"
 #include "packets/char_emotion.h"
+#include "packets/char_emotion_jump.h"
 #include "packets/char_equip.h"
 #include "packets/char_health.h"
 #include "packets/char_job_extra.h"
@@ -128,6 +130,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "packets/menu_config.h"
 #include "packets/menu_merit.h"
 #include "packets/menu_raisetractor.h"
+#include "packets/menu_unity.h"
 #include "packets/merit_points_categories.h"
 #include "packets/message_basic.h"
 #include "packets/message_combat.h"
@@ -3022,7 +3025,7 @@ void SmallPacket0x05D(map_session_data_t* const PSession, CCharEntity* const PCh
     }
 
     // Invalid Emote ID.
-    if (EmoteID < Emote::POINT || EmoteID > Emote::JOB)
+    if (EmoteID < Emote::POINT || EmoteID > Emote::AIM)
     {
         return;
     }
@@ -3216,8 +3219,8 @@ void SmallPacket0x060(map_session_data_t* const PSession, CCharEntity* const PCh
 {
     TracyZoneScoped;
     // uint32 charid = data.ref<uint32>(0x04);
-    int8* string = data[12];
-    luautils::OnEventUpdate(PChar, string);
+    std::string updateString = std::string((char*)data[12]);
+    luautils::OnEventUpdate(PChar, updateString);
 
     PChar->pushPacket(new CReleasePacket(PChar, RELEASE_TYPE::EVENT));
     PChar->pushPacket(new CReleasePacket(PChar, RELEASE_TYPE::UNKNOWN));
@@ -4286,7 +4289,7 @@ void SmallPacket0x0AD(map_session_data_t* const PSession, CCharEntity* const PCh
 void SmallPacket0x0B5(map_session_data_t* const PSession, CCharEntity* const PChar, CBasicPacket data)
 {
     TracyZoneScoped;
-    if (data.ref<uint8>(0x06) == '!' && !jailutils::InPrison(PChar) && CmdHandler.call(PChar, (const int8*)data[7]) == 0)
+    if (data.ref<uint8>(0x06) == '!' && !jailutils::InPrison(PChar) && CCommandHandler::call(luautils::lua, PChar, (const int8*)data[7]) == 0)
     {
         // this makes sure a command isn't sent to chat
     }
@@ -4501,6 +4504,37 @@ void SmallPacket0x0B5(map_session_data_t* const PSession, CCharEntity* const PCh
                     else // You cannot use that command in this area.
                     {
                         PChar->pushPacket(new CMessageStandardPacket(PChar, 0, MsgStd::CannotHere));
+                    }
+                }
+                break;
+                case MESSAGE_UNITY:
+                {
+                    if (PChar->PUnityChat != nullptr)
+                    {
+                        int8 packetData[8]{};
+                        ref<uint32>(packetData, 0) = PChar->PUnityChat->getLeader();
+                        ref<uint32>(packetData, 4) = PChar->id;
+                        message::send(MSG_CHAT_UNITY, packetData, sizeof packetData,
+                                      new CChatMessagePacket(PChar, MESSAGE_UNITY, (const char*)data[6]));
+
+                        roeutils::event(ROE_EVENT::ROE_UNITY_CHAT, PChar, RoeDatagram("unityMessage", (const char*)data[6]));
+
+                        if (map_config.audit_chat == 1 && map_config.audit_unity == 1)
+                        {
+                            char escaped_speaker[16 * 2 + 1];
+                            Sql_EscapeString(SqlHandle, escaped_speaker, (const char*)PChar->GetName());
+
+                            std::string escaped_full_string;
+                            escaped_full_string.reserve(strlen((const char*)data[6]) * 2 + 1);
+                            Sql_EscapeString(SqlHandle, escaped_full_string.data(), (const char*)data[6]);
+
+
+                            const char* fmtQuery = "INSERT into audit_chat (speaker,type,message,datetime) VALUES('%s','SAY','%s',current_timestamp())";
+                            if (Sql_Query(SqlHandle, fmtQuery, escaped_speaker, escaped_full_string.data()) == SQL_ERROR)
+                            {
+                                ShowError("packet_system::call: Failed to log inPrison MESSAGE_UNITY.\n");
+                            }
+                        }
                     }
                 }
                 break;
@@ -6669,11 +6703,80 @@ void SmallPacket0x115(map_session_data_t* const PSession, CCharEntity* const PCh
  *  This stub only handles the needed RoE updates.                        *
  *                                                                        *
  ************************************************************************/
+void SmallPacket0x116(map_session_data_t* const PSession, CCharEntity* const PChar, CBasicPacket data)
+{
+    TracyZoneScoped;
+    PChar->pushPacket(new CRoeSparkUpdatePacket(PChar));
+    PChar->pushPacket(new CMenuUnityPacket(PChar));
+}
+
+/************************************************************************
+ *                                                                        *
+ *  Unity Rankings Menu Packet (Possibly incomplete)                      *
+ *  This stub only handles the needed RoE updates.                        *
+ *                                                                        *
+ ************************************************************************/
 
 void SmallPacket0x117(map_session_data_t* const PSession, CCharEntity* const PChar, CBasicPacket data)
 {
     TracyZoneScoped;
     PChar->pushPacket(new CRoeSparkUpdatePacket(PChar));
+    PChar->pushPacket(new CMenuUnityPacket(PChar));
+}
+
+/************************************************************************
+ *                                                                        *
+ *  Unity Chat Toggle                                                     *
+ *                                                                        *
+ ************************************************************************/
+
+void SmallPacket0x118(map_session_data_t* const PSession, CCharEntity* const PChar, CBasicPacket data)
+{
+    bool active = data.ref<uint8>(0x04);
+    if (PChar->PUnityChat)
+    {
+        unitychat::DelOnlineMember(PChar, PChar->PUnityChat->getLeader());
+    }
+    if (active)
+    {
+        unitychat::AddOnlineMember(PChar, PChar->profile.unity_leader);
+    }
+}
+
+/************************************************************************
+ *                                                                       *
+ *  Jump (/jump)                                                         *
+ *                                                                       *
+ ************************************************************************/
+
+void SmallPacket0x11D(map_session_data_t* const PSession, CCharEntity* const PChar, CBasicPacket data)
+{
+    TracyZoneScoped;
+    if (jailutils::InPrison(PChar))
+    {
+        PChar->pushPacket(new CMessageBasicPacket(PChar, PChar, 0, 0, 316));
+        return;
+    }
+
+    // Rate limit emotes
+    auto lastEmoteTime  = PChar->GetLocalVar("LastEmoteTime");
+    auto timeNowSeconds = std::chrono::time_point_cast<std::chrono::seconds>(server_clock::now());
+    if (lastEmoteTime == 0 || (timeNowSeconds.time_since_epoch().count() - lastEmoteTime) > 2)
+    {
+        PChar->SetLocalVar("LastEmoteTime", (uint32)timeNowSeconds.time_since_epoch().count());
+    }
+    else
+    {
+        ShowWarning(CL_YELLOW "SmallPacket0x11D: Rate limiting jump packet for %s\n" CL_RESET, PChar->GetName());
+        return;
+    }
+
+    const auto targetID    = data.ref<uint32>(0x04);
+    const auto targetIndex = data.ref<uint16>(0x08);
+    const auto extra       = data.ref<uint16>(0x0A);
+
+    PChar->loc.zone->PushPacket(PChar, CHAR_INRANGE_SELF, new CCharEmotionJumpPacket(PChar, targetIndex, extra));
+
 }
 
 /************************************************************************
@@ -6800,8 +6903,10 @@ void PacketParserInitialize()
     PacketSize[0x113] = 0x06; PacketParser[0x113] = &SmallPacket0x113;
     PacketSize[0x114] = 0x00; PacketParser[0x114] = &SmallPacket0x114;
     PacketSize[0x115] = 0x02; PacketParser[0x115] = &SmallPacket0x115;
-    PacketSize[0x116] = 0x02; PacketParser[0x116] = &SmallPacket0xFFF; // not implemented
+    PacketSize[0x116] = 0x00; PacketParser[0x116] = &SmallPacket0x116;
     PacketSize[0x117] = 0x00; PacketParser[0x117] = &SmallPacket0x117;
+    PacketSize[0x118] = 0x00; PacketParser[0x118] = &SmallPacket0x118;
+    PacketSize[0x11D] = 0x00; PacketParser[0x11D] = &SmallPacket0x11D;
     // clang-format on
 }
 

@@ -4,14 +4,14 @@ require("scripts/globals/settings")
 require("scripts/globals/status")
 require("scripts/globals/utils")
 require("scripts/globals/msg")
-------------------------------------
+-----------------------------------
 
 tpz = tpz or {}
 tpz.magic = tpz.magic or {}
 
-------------------------------------
+-----------------------------------
 -- Tables by element
-------------------------------------
+-----------------------------------
 
 tpz.magic.dayStrong           = {tpz.day.FIRESDAY,              tpz.day.ICEDAY,               tpz.day.WINDSDAY,               tpz.day.EARTHSDAY,              tpz.day.LIGHTNINGDAY,               tpz.day.WATERSDAY,               tpz.day.LIGHTSDAY,           tpz.day.DARKSDAY}
 tpz.magic.singleWeatherStrong = {tpz.weather.HOT_SPELL,         tpz.weather.SNOW,             tpz.weather.WIND,               tpz.weather.DUST_STORM,         tpz.weather.THUNDER,                tpz.weather.RAIN,                tpz.weather.AURORAS,         tpz.weather.GLOOM}
@@ -138,11 +138,11 @@ function doEnspell(caster, target, spell, effect)
     end
 end
 
----------------------------------
+-----------------------------------
 --   getCurePower returns the caster's cure power
 --   getCureFinal returns the final cure amount
 --   Source: http://members.shaw.ca/pizza_steve/cure/Cure_Calculator.html
----------------------------------
+-----------------------------------
 function getCurePower(caster, isBlueMagic)
     local MND = caster:getStat(tpz.mod.MND)
     local VIT = caster:getStat(tpz.mod.VIT)
@@ -795,6 +795,8 @@ function addBonuses(caster, spell, target, dmg, params)
 
     if (burst > 1.0) then
         spell:setMsg(spell:getMagicBurstMessage()) -- "Magic Burst!"
+
+        caster:triggerRoeEvent(tpz.roe.triggers.magicBurst)
     end
 
     dmg = math.floor(dmg * burst)
@@ -952,9 +954,9 @@ function getElementalDamageReduction(target, element)
     return defense
 end
 
----------------------------------------------
+-----------------------------------
 --  Elemental Debuff Potency functions
----------------------------------------------
+-----------------------------------
 
 function getElementalDebuffDOT(INT)
     local DOT = 0

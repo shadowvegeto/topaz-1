@@ -1,12 +1,12 @@
-------------------------------------------------------------------------
+-----------------------------------
 -- This file holds all global (not zone specific) text references
-------------------------------------------------------------------------
+-----------------------------------
 tpz = tpz or {}
 tpz.msg = tpz.msg or {}
 
-------------------------------------
+-----------------------------------
 -- Message Channels
-------------------------------------
+-----------------------------------
 
 tpz.msg.channel =
 {
@@ -55,9 +55,9 @@ tpz.msg.area =
     YELL        = 4  -- If yell is enabled in zone, will display.
 }
 
-------------------------------------
+-----------------------------------
 -- Basic Messages
-------------------------------------
+-----------------------------------
 
 tpz.msg.basic =
 {
@@ -339,15 +339,16 @@ tpz.msg.basic =
     ROE_FIRST_TIME_SPARKS   = 707,  -- As a first-time bonus, you receive <amount> sparks of eminence for a total of <amount>!
     ROE_BONUS_ITEM_PLURAL   = 709,  -- As a special bonus for your valiant efforts, you have been awarded the following: <itemid> x<amount>!
     ROE_TIMED_CLEAR         = 710,  -- You are cleared to fulfill this objective once again.
+    ROE_RECEIVED_ACCOLADES  = 741,  -- You have gained <amount> Unity accolade[/s] for a total of <amount>!
 
     -- TRUST & ALTER EGO
     TRUST_NO_CAST_TRUST     = 700,  -- You are unable to use Trust magic at this time.
     TRUST_NO_CALL_AE        = 717,  -- You cannot call forth alter egos here.
 }
 
-------------------------------------
+-----------------------------------
 -- System Messages
-------------------------------------
+-----------------------------------
 
 tpz.msg.system =
 {

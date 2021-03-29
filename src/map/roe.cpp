@@ -30,6 +30,7 @@
 #include "utils/zoneutils.h"
 #include "vana_time.h"
 
+#include "packets/char_spells.h"
 #include "packets/roe_questlog.h"
 #include "packets/roe_sparkupdate.h"
 #include "packets/roe_update.h"
@@ -47,88 +48,62 @@ void SaveEminenceDataNice(CCharEntity* PChar)
     }
 }
 
-void call_onRecordTrigger(lua_State* L, CCharEntity* PChar, uint16 recordID, const RoeDatagramList& payload)
+void call_onRecordTrigger(CCharEntity* PChar, uint16 recordID, const RoeDatagramList& payload)
 {
-    uint32 stackTop = lua_gettop(L);
-
-    lua_getfield(L, -1, "onRecordTrigger");
-    if (lua_isnil(L, -1))
+    // TODO: Move this Lua interaction into luautils
+    auto onRecordTrigger = luautils::lua["tpz"]["roe"]["onRecordTrigger"];
+    if (!onRecordTrigger.valid())
     {
-        lua_settop(L, stackTop);
-        ShowError("roeutils::onRecordTrigger: unexpected lua stack state during call for record %d.", recordID);
+        sol::error err = onRecordTrigger;
+        ShowError("roeutils::onRecordTrigger: record %d: %s\n.", recordID, err.what());
         return;
     }
 
-    uint8 args{ 0 };
-
-    CLuaBaseEntity LuaAllyEntity(PChar);
-    Lunar<CLuaBaseEntity>::push(L, &LuaAllyEntity);
-    args++;
-
-    // Record #
-    lua_pushinteger(L, recordID);
-    args++;
-
-    // param table
-    lua_newtable(L);
-    args++;
-
-    lua_pushinteger(L, roeutils::GetEminenceRecordProgress(PChar, recordID));
-    lua_setfield(L, -2, "progress");
+    // Create param table
+    auto params        = luautils::lua.create_table();
+    params["progress"] = roeutils::GetEminenceRecordProgress(PChar, recordID);
 
     for (auto& datagram : payload) // Append datagrams to param table
     {
-        lua_pushstring(L, datagram.luaKey.c_str());
         if (auto value = std::get_if<uint32>(&datagram.data))
         {
-            lua_pushinteger(L, *value);
+            params[datagram.luaKey] = *value;
         }
         else if (auto PMob = std::get_if<CMobEntity*>(&datagram.data))
         {
-            CLuaBaseEntity LuaMobEntity(*PMob);
-            Lunar<CLuaBaseEntity>::push(L, &LuaMobEntity);
+            params[datagram.luaKey] = CLuaBaseEntity(*PMob);
         }
         else if (auto text = std::get_if<std::string>(&datagram.data))
         {
-            lua_pushstring(L, text->c_str());
+            params[datagram.luaKey] = text;
         }
         else
         {
-            lua_pushnil(L);
             ShowWarning("roeutils::onRecordTrigger: Unhandled payload type for '%s' with record #%d.", datagram.luaKey, recordID);
         }
-        lua_settable(L, -3);
     }
 
-    if (lua_pcall(L, args, 0, 0))
+    // Call
+    auto result = onRecordTrigger(CLuaBaseEntity(PChar), recordID, params);
+    if (!result.valid())
     {
-        ShowError("roeutils::onRecordTrigger: %s\n", lua_tostring(L, -1));
-        lua_pop(L, 1);
+        sol::error err = result;
+        ShowError("roeutils::onRecordTrigger: %s\n", err.what());
     }
-
-    lua_settop(L, stackTop);
 }
 
 namespace roeutils
 {
     void init()
     {
-        lua_State* L = luautils::LuaHandle;
-        lua_getglobal(L, "ENABLE_ROE");
-        roeutils::RoeSystem.RoeEnabled = lua_isnil(L, -1) || lua_tointeger(L, -1);
-        lua_pop(L, 1);
-        lua_register(L, "RoeParseRecords", roeutils::ParseRecords);
-        lua_register(L, "RoeParseTimed", roeutils::ParseTimedSchedule);
+        roeutils::RoeSystem.RoeEnabled   = luautils::lua["ENABLE_ROE"].get_or(0);
+        luautils::lua["RoeParseRecords"] = &roeutils::ParseRecords;
+        luautils::lua["RoeParseTimed"]   = &roeutils::ParseTimedSchedule;
         RoeHandlers.fill(RoeCheckHandler());
     }
 
-    int32 ParseRecords(lua_State* L)
+    void ParseRecords(sol::table const& records_table)
     {
-        if (lua_isnil(L, -1) || !lua_istable(L, -1))
-        {
-            return 0;
-        }
-
         RoeHandlers.fill(RoeCheckHandler());
         roeutils::RoeSystem.ImplementedRecords.reset();
         roeutils::RoeSystem.RepeatableRecords.reset();
@@ -137,19 +112,19 @@ namespace roeutils
         roeutils::RoeSystem.DailyRecordIDs.clear();
         roeutils::RoeSystem.NotifyThresholds.fill(1);
 
-        // Read data from global records table
-        lua_pushnil(L);
-        while (lua_next(L, -2) != 0)
+        // TODO: Move this Lua interaction into luautils
+        for (auto& entry : records_table)
         {
             // Set Implemented bit.
-            uint16 recordID = static_cast<uint16>(lua_tointeger(L, -2));
+            uint16 recordID = entry.first.as<uint16>();
+            auto   table    = entry.second.as<sol::table>();
+
             roeutils::RoeSystem.ImplementedRecords.set(recordID);
 
             // Register Trigger Handler
-            lua_getfield(L, -1, "trigger");
-            if (!lua_isnil(L, -1))
+            if (table["trigger"].valid())
             {
-                uint32 trigger = static_cast<uint32>(lua_tointeger(L, -1));
+                uint32 trigger = table["trigger"].get<uint32>();
                 if (trigger > 0 && trigger < ROE_NONE)
                 {
                     RoeHandlers[trigger].bitmap.set(recordID);
@@ -159,28 +134,34 @@ namespace roeutils
                     ShowError("ROEUtils: Unknown Record trigger index %d for record %d.", trigger, recordID);
                 }
             }
-            lua_pop(L, 1);
 
             // Set notification threshold
-            lua_getfield(L, -1, "notify");
-            if (!lua_isnil(L, -1))
+            if (table["notify"].valid())
             {
-                roeutils::RoeSystem.NotifyThresholds[recordID] = static_cast<uint32>((lua_tointeger(L, -1)));
+                roeutils::RoeSystem.NotifyThresholds[recordID] = table["notify"].get<uint32>();
             }
-            lua_pop(L, 1);
 
             // Set flags
-            lua_getfield(L, -1, "flags");
-            if (!lua_isnil(L, -1) && lua_istable(L, -1))
+            auto flags = table["flags"].get<sol::table>();
+            if (flags.valid())
             {
-                lua_pushnil(L);
-                while (lua_next(L, -2) != 0)
+                for (auto& flag_entry : flags)
                 {
-                    std::string flag = lua_tostring(L, -2);
+                    std::string flag = flag_entry.first.as<std::string>();
                     if (flag == "daily")
                     {
                         roeutils::RoeSystem.DailyRecords.set(recordID);
                         roeutils::RoeSystem.DailyRecordIDs.push_back(recordID);
+                    }
+                    else if (flag == "weekly")
+                    {
+                        roeutils::RoeSystem.WeeklyRecords.set(recordID);
+                        roeutils::RoeSystem.WeeklyRecordIDs.push_back(recordID);
+                    }
+                    else if (flag == "unity")
+                    {
+                        roeutils::RoeSystem.UnityRecords.set(recordID);
+                        roeutils::RoeSystem.UnityRecordIDs.push_back(recordID);
                     }
                     else if (flag == "timed")
                     {
@@ -198,44 +179,29 @@ namespace roeutils
                     {
                         ShowError("ROEUtils: Unknown flag %s for record #%d.", flag, recordID);
                     }
-                    lua_pop(L, 1);
                 }
             }
-            lua_pop(L, 1);
-
-            lua_pop(L, 1); // Pops record entry to prep next loop
         }
         // ShowInfo("\nRoEUtils: %d record entries parsed & available.", RoeBitmaps.ImplementedRecords.count());
-        return 0;
     }
 
-    int32 ParseTimedSchedule(lua_State* L)
+    void ParseTimedSchedule(sol::table const& schedule_table)
     {
-        if (lua_isnil(L, -1) || !lua_istable(L, -1))
-        {
-            return 0;
-        }
-
         roeutils::RoeSystem.TimedRecords.reset();
         roeutils::RoeSystem.TimedRecordTable.fill(RecordTimetable_D{});
 
-        lua_pushnil(L);
-        while (lua_next(L, -2) != 0)
+        for (auto& entry : schedule_table)
         {
-            uint8 day = static_cast<uint8>(lua_tointeger(L, -2) - 1);
-
-            lua_pushnil(L);
-            while (lua_next(L, -2) != 0)
+            uint8 day       = entry.first.as<uint8>() - 1;
+            auto  timeslots = entry.second.as<sol::table>();
+            for (auto slot_entry : timeslots)
             {
-                auto   block                                           = lua_tointeger(L, -2) - 1;
-                uint16 recordID                                        = static_cast<uint16>(lua_tointeger(L, -1));
-                roeutils::RoeSystem.TimedRecordTable.at(day).at(block) = recordID;
-                lua_pop(L, 1);
-            }
+                auto   block    = slot_entry.first.as<uint16>() - 1;
+                uint16 recordID = slot_entry.second.as<uint16>();
 
-            lua_pop(L, 1);
+                roeutils::RoeSystem.TimedRecordTable.at(day).at(block) = recordID;
+            }
         }
-        return 0;
     }
 
     bool event(ROE_EVENT eventID, CCharEntity* PChar, const RoeDatagramList& payload)
@@ -254,21 +220,16 @@ namespace roeutils
             return false;
         }
 
-        lua_State* L        = luautils::LuaHandle;
-        uint32     stackTop = lua_gettop(L);
-        lua_getglobal(L, "tpz");
-        lua_getfield(L, -1, "roe");
-
         // Call onRecordTrigger for each record of this type
         for (int i = 0; i < 31; i++)
         {
             // Check record is of this type
             if (uint16 recordID = PChar->m_eminenceLog.active[i]; handler.bitmap.test(recordID))
             {
-                call_onRecordTrigger(L, PChar, recordID, payload);
+                call_onRecordTrigger(PChar, recordID, payload);
             }
         }
-        lua_settop(L, stackTop);
+
         return true;
     }
 
@@ -294,6 +255,7 @@ namespace roeutils
         {
             PChar->pushPacket(new CRoeQuestLogPacket(PChar, i));
         }
+
         charutils::SaveEminenceData(PChar);
     }
 
@@ -302,6 +264,26 @@ namespace roeutils
         uint16 page = recordID / 8;
         uint8  bit  = recordID % 8;
         return PChar->m_eminenceLog.complete[page] & (1 << bit);
+    }
+
+    uint16 GetNumEminenceCompleted(CCharEntity* PChar)
+    {
+        uint16 completedCount = 0;
+
+        for (int page = 0; page < 512; page++)
+        {
+            int pageVal = PChar->m_eminenceLog.complete[page];
+
+            while (pageVal)
+            {
+                completedCount += pageVal & 1;
+                pageVal >>= 1;
+            }
+        }
+
+        // TODO: Verify count is accurate.  We don't want to count hidden objectives
+
+        return completedCount;
     }
 
     bool AddEminenceRecord(CCharEntity* PChar, uint16 recordID)
@@ -319,6 +301,7 @@ namespace roeutils
         {
             return false;
         }
+
         // Prevent packet-injection from taking timed records as normal ones.
         if (roeutils::RoeSystem.TimedRecords.test(recordID))
         {
@@ -405,6 +388,32 @@ namespace roeutils
         return false;
     }
 
+    void UpdateUnityTrust(CCharEntity* PChar, bool sendUpdate)
+    {
+        int32  curPoints        = charutils::GetPoints(PChar, "prev_accolades") / 1000;
+        int32  prevPoints       = charutils::GetPoints(PChar, "current_accolades") / 1000;
+        uint16 unityLeaderTrust = (PChar->profile.unity_leader > 0) ? ROE_TRUST_ID[PChar->profile.unity_leader - 1] : 0;
+
+        if (unityLeaderTrust > 0)
+        {
+            if (curPoints >= 5 || prevPoints >= 5)
+            {
+                charutils::addSpell(PChar, unityLeaderTrust);
+                charutils::SaveSpell(PChar, unityLeaderTrust);
+            }
+            else
+            {
+                charutils::delSpell(PChar, unityLeaderTrust);
+                charutils::DeleteSpell(PChar, unityLeaderTrust);
+            }
+        }
+
+        if (sendUpdate)
+        {
+            PChar->pushPacket(new CCharSpellsPacket(PChar));
+        }
+    }
+
     void onCharLoad(CCharEntity* PChar)
     {
         if (!RoeSystem.RoeEnabled)
@@ -424,29 +433,36 @@ namespace roeutils
         // Only chars with First Step Forward complete can get timed/daily records
         if (GetEminenceRecordCompletion(PChar, 1))
         {
-            // Time gets messy, avert your eyes.
-            auto jstnow     = time(nullptr) + JST_OFFSET;
-            auto lastOnline = PChar->lastOnline;
+            time_t lastOnline      = PChar->lastOnline;
+            time_t lastJstMidnight = CVanaTime::getInstance()->getJstMidnight() - (60 * 60 * 24); // Unix timestamp of the last JST midnight
 
             { // Daily Reset
-                auto* jst            = gmtime(&jstnow);
-                jst->tm_hour         = 0;
-                jst->tm_min          = 0;
-                jst->tm_sec          = 0;
-                auto lastJstMidnight = timegm(jst) - JST_OFFSET; // Unix timestamp of the last JST midnight
-
                 if (lastOnline < lastJstMidnight)
                 {
                     ClearDailyRecords(PChar);
                 }
             }
 
-            { // 4hr Reset
-                auto* jst              = gmtime(&jstnow);
-                jst->tm_hour           = jst->tm_hour & 0xFC;
-                jst->tm_min            = 0;
-                jst->tm_sec            = 0;
-                auto lastJstTimedBlock = timegm(jst) - JST_OFFSET; // Unix timestamp of the start of the current 4-hr block
+            { // Weekly Reset
+                // Get the current JST DOTW (0-6), that plus 6 mod 7 will push the start of the week to Monday.
+                // Multiply that to get seconds, and subtract from last JST midnight.
+                uint32 jstWeekday         = (CVanaTime::getInstance()->getJstWeekDay() + 6) % 7;
+                time_t lastJstWeeklyReset = lastJstMidnight - (jstWeekday * (60 * 60 * 24)); // Unix timestamp of last JST Midnight (Sunday->Monday)
+                time_t lastTwoJstResets   = lastJstWeeklyReset - (7 * (60 * 60 * 24));       // Unix timestamp of two JST resets ago
+
+                if (lastOnline < lastJstWeeklyReset)
+                {
+                    ClearWeeklyRecords(PChar);
+
+                    if (lastOnline < lastTwoJstResets)
+                    {
+                        charutils::SetPoints(PChar, "prev_accolades", 0);
+                    }
+                }
+            }
+
+            {                                                                                                                                  // 4hr Reset
+                time_t lastJstTimedBlock = lastJstMidnight + (static_cast<uint8>(CVanaTime::getInstance()->getJstHour() / 4) * (60 * 60 * 4)); // Unix timestamp of the start of the current 4-hr block
 
                 if (lastOnline < lastJstTimedBlock || PChar->m_eminenceLog.active[30] != GetActiveTimedRecord())
                 {
@@ -461,12 +477,7 @@ namespace roeutils
     {
         if (RoeSystem.RetroactiveRecords.test(recordID))
         {
-            lua_State* L        = luautils::LuaHandle;
-            uint32     stackTop = lua_gettop(L);
-            lua_getglobal(L, "tpz");
-            lua_getfield(L, -1, "roe");
-            call_onRecordTrigger(L, PChar, recordID, RoeDatagramList{});
-            lua_settop(L, stackTop);
+            call_onRecordTrigger(PChar, recordID, RoeDatagramList{});
         }
         return;
     }
@@ -475,12 +486,7 @@ namespace roeutils
     {
         if (roeutils::HasEminenceRecord(PChar, recordID))
         {
-            lua_State* L        = luautils::LuaHandle;
-            uint32     stackTop = lua_gettop(L);
-            lua_getglobal(L, "tpz");
-            lua_getfield(L, -1, "roe");
-            call_onRecordTrigger(L, PChar, recordID, RoeDatagramList{ RoeDatagram("claim", 1) });
-            lua_settop(L, stackTop);
+            call_onRecordTrigger(PChar, recordID, RoeDatagramList{ RoeDatagram("claim", 1) });
             return true;
         }
         return false;
@@ -532,6 +538,14 @@ namespace roeutils
             PChar->m_eminenceLog.complete[page] &= ~(1 << bit);
         }
 
+        // Set completion for Unity Records, but maintain progress on active
+        for (auto record : RoeSystem.UnityRecordIDs)
+        {
+            uint16 page = record / 8;
+            uint8  bit  = record % 8;
+            PChar->m_eminenceLog.complete[page] &= ~(1 << bit);
+        }
+
         charutils::SaveEminenceData(PChar);
 
         for (int i = 0; i < 4; i++)
@@ -569,4 +583,94 @@ namespace roeutils
         zoneutils::ForEachZone([](CZone* PZone) { PZone->ForEachChar([](CCharEntity* PChar) { ClearDailyRecords(PChar); }); });
     }
 
+    void ClearWeeklyRecords(CCharEntity* PChar)
+    {
+        // Set daily record progress to 0
+        for (int i = 0; i < 30; i++)
+        {
+            if (auto recordID = PChar->m_eminenceLog.active[i]; RoeSystem.WeeklyRecords.test(recordID))
+            {
+                PChar->m_eminenceLog.progress[i] = 0;
+            }
+        }
+        PChar->pushPacket(new CRoeUpdatePacket(PChar));
+
+        // Set completion for daily records to 0
+        for (auto record : RoeSystem.WeeklyRecordIDs)
+        {
+            uint16 page = record / 8;
+            uint8  bit  = record % 8;
+            PChar->m_eminenceLog.complete[page] &= ~(1 << bit);
+        }
+
+        charutils::SaveEminenceData(PChar);
+        charutils::SetCharVar(PChar, "weekly_sparks_spent", 0);
+        charutils::SetCharVar(PChar, "weekly_accolades_spent", 0);
+        charutils::SetCharVar(PChar, "unity_changed", 0);
+
+        int32 currentAccolades = charutils::GetPoints(PChar, "current_accolades");
+        charutils::SetPoints(PChar, "prev_accolades", currentAccolades);
+        charutils::SetPoints(PChar, "current_accolades", 0);
+
+        UpdateUnityTrust(PChar);
+
+        for (int i = 0; i < 4; i++)
+        {
+            PChar->pushPacket(new CRoeQuestLogPacket(PChar, i));
+        }
+    }
+
+    void CycleWeeklyRecords()
+    {
+        TracyZoneScoped;
+        if (!RoeSystem.RoeEnabled)
+        {
+            return;
+        }
+
+        zoneutils::ForEachZone([](CZone* PZone) { PZone->ForEachChar([](CCharEntity* PChar) { ClearWeeklyRecords(PChar); }); });
+    }
+
+    // Weekly Ranking Reset
+    void CycleUnityRankings()
+    {
+        const char* rankingQuery = "UPDATE unity_system SET members_prev = members_current, points_prev = points_current, members_current = 0, points_current = 0;";
+        Sql_Query(SqlHandle, rankingQuery);
+
+        roeutils::UpdateUnityRankings();
+    }
+
+    void UpdateUnityRankings()
+    {
+        const char* memberQuery = "UPDATE unity_system JOIN (SELECT unity_leader, COUNT(*) AS members FROM char_profile GROUP BY unity_leader) TMP ON unity_system.leader = unity_leader SET unity_system.members_current = members;";
+        Sql_Query(SqlHandle, memberQuery);
+
+        const char* unityQuery = "SELECT leader, CASE WHEN members_prev = 0 THEN 0 ELSE FLOOR(points_prev/members_prev) END AS eval FROM unity_system ORDER BY eval DESC;";
+        int32       ret        = Sql_Query(SqlHandle, unityQuery);
+
+        if (ret != SQL_ERROR && Sql_NumRows(SqlHandle) != 0)
+        {
+            uint8 currentRank = 1;
+            uint8 rankGap     = 0;
+            int32 prev_eval   = 0;
+
+            while (Sql_NextRow(SqlHandle) == SQL_SUCCESS)
+            {
+                int32 new_eval = Sql_GetIntData(SqlHandle, 1);
+
+                if (new_eval < prev_eval)
+                {
+                    currentRank = currentRank + rankGap;
+                    rankGap     = 1;
+                }
+                else
+                {
+                    rankGap++;
+                }
+
+                prev_eval                                                             = new_eval;
+                roeutils::RoeSystem.unityLeaderRank[Sql_GetIntData(SqlHandle, 0) - 1] = currentRank;
+            }
+        }
+    }
 } // namespace roeutils

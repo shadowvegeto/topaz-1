@@ -8,6 +8,8 @@ require("scripts/globals/settings")
 require("scripts/globals/shop")
 require("scripts/globals/quests")
 require("scripts/globals/pathfind")
+-----------------------------------
+local entity = {}
 
 local path =
 {
@@ -52,40 +54,38 @@ local path =
     58.112335, -6.282220, 0.439206
 }
 
-function onSpawn(npc)
+entity.onSpawn = function(npc)
     npc:initNpcAi()
     npc:setPos(tpz.path.first(path))
-    -- onPath(npc)
 end
 
-function onPath(npc)
+entity.onPath = function(npc)
     tpz.path.patrol(npc, path)
 end
-function onTrade(player, npc, trade)
+
+entity.onTrade = function(player, npc, trade)
 end
 
-function onTrigger(player, npc)
-    DampScroll = player:getQuestStatus(OUTLANDS, tpz.quest.id.outlands.SECRET_OF_THE_DAMP_SCROLL)
+entity.onTrigger = function(player, npc)
+    DampScroll = player:getQuestStatus(tpz.quest.log_id.OUTLANDS, tpz.quest.id.outlands.SECRET_OF_THE_DAMP_SCROLL)
     mLvl = player:getMainLvl()
 
-    if (DampScroll == QUEST_AVAILABLE and player:getFameLevel(NORG) >= 3 and mLvl >= 10 and player:hasItem(1210) == true) then
+    if DampScroll == QUEST_AVAILABLE and player:getFameLevel(NORG) >= 3 and mLvl >= 10 and player:hasItem(1210) == true then
         player:startEvent(31, 1210) -- Start the quest
-    elseif (DampScroll == QUEST_ACCEPTED) then
+    elseif DampScroll == QUEST_ACCEPTED then
         player:startEvent(32) -- Reminder Dialogue
     else
         player:startEvent(85)
     end
-
-    npc:wait(0)
 end
 
-function onEventUpdate(player, csid, option)
+entity.onEventUpdate = function(player, csid, option)
 end
 
-function onEventFinish(player, csid, option, npc)
-    if (csid == 31) then
-        player:addQuest(OUTLANDS, tpz.quest.id.outlands.SECRET_OF_THE_DAMP_SCROLL)
+entity.onEventFinish = function(player, csid, option, npc)
+    if csid == 31 then
+        player:addQuest(tpz.quest.log_id.OUTLANDS, tpz.quest.id.outlands.SECRET_OF_THE_DAMP_SCROLL)
     end
-
-    npc:wait(0)
 end
+
+return entity

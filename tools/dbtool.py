@@ -26,6 +26,8 @@ from migrations import eminence_blob
 from migrations import char_timestamp
 from migrations import currency_columns
 from migrations import add_instance_zone_column
+from migrations import char_points_weekly_unity
+from migrations import char_profile_unity_leader
 # Append new migrations to this list and import above
 migrations = [
     unnamed_flags,
@@ -44,6 +46,8 @@ migrations = [
     char_timestamp,
     currency_columns,
     add_instance_zone_column,
+    char_points_weekly_unity,
+    char_profile_unity_leader
 ]
 # These are the default 'protected' files
 player_data = [
@@ -73,6 +77,7 @@ player_data = [
     'delivery_box.sql',
     'linkshells.sql',
     'server_variables.sql',
+    'unity_system.sql',
 ]
 import_files = []
 backups = []
@@ -203,6 +208,8 @@ def fetch_files(express=False):
                 express_enabled = True
             else:
                 express_enabled = False
+                if len(repo.commit(current_version).diff(release_version,paths='tools/migrations')) > 0:
+                    express_enabled = True
         except:
             print(Fore.RED + 'Error checking diffs.\nCheck that hash is valid in ../conf/version.conf.')
     else:
@@ -414,7 +421,7 @@ def run_all_migrations(silent=False):
                 'have corrupt data in some field. See migration_errors.log for more details.')
         time.sleep(0.5)
     else:
-        print(Fore.GREEN + 'All migrations done!')
+        print(Fore.GREEN + 'No migrations required.')
         time.sleep(0.5)
 
 def check_migration(migration, migrations_needed, silent=False):
@@ -536,8 +543,8 @@ def main():
             full_update = False
             if len(sys.argv) > 2 and str(sys.argv[2]) == 'full':
                 full_update = True
-            if current_version and release_version and current_version == release_version and not full_update:
-                print(Fore.GREEN + 'Database up to date!')
+            if current_version and release_version and not express_enabled and not full_update:
+                print(Fore.GREEN + 'Database is up to date.')
                 return
             if connect() != False:
                 if express_enabled and not full_update:
@@ -545,6 +552,13 @@ def main():
                 else:
                     update_db(True)
                 close()
+            return
+        elif 'setup' == arg1:
+            if len(sys.argv) > 2 and str(sys.argv[2]) == database:
+                create_command = '"' + mysql_bin + 'mysqladmin' + exe + '" -h ' + host + ' -P ' + str(port) + ' -u ' + login + ' -p' + password + ' CREATE ' + database
+                os.system(create_command + log_errors)
+                fetch_errors()
+                setup_db()
             return
     #Main loop
     print(colorama.ansi.clear_screen())

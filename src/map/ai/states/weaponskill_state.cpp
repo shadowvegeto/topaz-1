@@ -22,6 +22,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "weaponskill_state.h"
 #include "../../entities/battleentity.h"
 #include "../../packets/action.h"
+#include "../../roe.h"
 #include "../../status_effect_container.h"
 #include "../../utils/battleutils.h"
 #include "../../weapon_skill.h"
@@ -113,15 +114,22 @@ bool CWeaponSkillState::Update(time_point tick)
         m_PEntity->OnWeaponSkillFinished(*this, action);
         m_PEntity->loc.zone->PushPacket(m_PEntity, CHAR_INRANGE_SELF, new CActionPacket(action));
         auto* PTarget{ GetTarget() };
-        m_PEntity->PAI->EventHandler.triggerListener("WEAPONSKILL_USE", m_PEntity, PTarget, m_PSkill->getID(), m_spent, &action);
-        PTarget->PAI->EventHandler.triggerListener("WEAPONSKILL_TAKE", PTarget, m_PEntity, m_PSkill->getID(), m_spent, &action);
+
+        m_PEntity->PAI->EventHandler.triggerListener("WEAPONSKILL_USE", CLuaBaseEntity(m_PEntity), CLuaBaseEntity(PTarget), m_PSkill->getID(), m_spent, &action);
+        PTarget->PAI->EventHandler.triggerListener("WEAPONSKILL_TAKE", CLuaBaseEntity(PTarget), CLuaBaseEntity(m_PEntity), m_PSkill->getID(), m_spent, &action);
+
+        if (m_PEntity->objtype == TYPE_PC)
+        {
+            roeutils::event(ROE_EVENT::ROE_WSKILL_USE, static_cast<CCharEntity*>(m_PEntity), RoeDatagram("skillType", m_PSkill->getType()));
+        }
+
         auto delay   = m_PSkill->getAnimationTime();
         m_finishTime = tick + delay;
         Complete();
     }
     else if (tick > m_finishTime)
     {
-        m_PEntity->PAI->EventHandler.triggerListener("WEAPONSKILL_STATE_EXIT", m_PEntity, m_PSkill->getID());
+        m_PEntity->PAI->EventHandler.triggerListener("WEAPONSKILL_STATE_EXIT", CLuaBaseEntity(m_PEntity), m_PSkill->getID());
         return true;
     }
     return false;

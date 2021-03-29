@@ -1,8 +1,8 @@
----------------------------------------------
+-----------------------------------
 --
 --  KEYITEMS IDS
 --
----------------------------------------------
+-----------------------------------
 tpz = tpz or {}
 
 tpz.keyItem =
@@ -2989,6 +2989,10 @@ tpz.keyItem =
     ADAMANTOISE_COMPANION                    = 3096,
     DHAMEL_COMPANION                         = 3097,
     DOLL_COMPANION                           = 3098,
+    GOLDEN_BOMB_COMPANION                    = 3099,
+    BUFFALO_COMPANION                        = 3100,
+    WIVRE_COMPANION                          = 3101,
+
     SHEET_OF_SHADOW_LORD_TUNES               = 3136,
     MYSTICAL_CANTEEN                         = 3137,
     YGNASS_INSIGNIA                          = 3138,
@@ -3078,5 +3082,24 @@ tpz.keyItem =
     TREATISE_ON_MARTIAL_TECHNIQUES           = 3225,
     SHEET_OF_ALTAIEU_TUNES                   = 3226,
     SHEET_OF_JEUNO_TUNES                     = 3227,
+    SHEET_OF_HARVEST_TUNES                   = 3228,
+    STAR_CRESTED_SUMMONS                     = 3229,
+    STRANGE_DOLL                             = 3230,
+    PIECE_OF_EVIDENCE                        = 3231,
+    SUBLIME_LUCKY_EGG                        = 3232,
+    MAGICKED_DOLL                            = 3233,
+    MOGLOPHONE_II_1                          = 3234,
+    MOGLOPHONE_II_2                          = 3235,
+    MOGLOPHONE_II_3                          = 3236,
+    INFORMATION_ON_DEALAN_DHE                = 3237,
+    INFORMATION_ON_SGILI                     = 3238,
+    INFORMATION_ON_U_BNAI                    = 3239,
+    INFORMATION_ON_GOGMAGOG                  = 3240,
+    INFORMATION_ON_ARISTAEUS                 = 3241,
+    INFORMATION_ON_MARMORKREBS               = 3242,
+    INFORMATION_ON_GIGELORUM                 = 3243,
+    INFORMATION_ON_RASKOVNICHE               = 3244,
+    INFORMATION_ON_PROCNE                    = 3245,
+    INFORMATION_ON_HENWEN                    = 3246,
 }
 tpz.ki = tpz.keyItem

@@ -17,6 +17,7 @@ zones[tpz.zone.WINDURST_WOODS] =
         KEYITEM_OBTAINED             = 6551, -- Obtained key item: <keyitem>.
         KEYITEM_LOST                 = 6552, -- Lost key item: <keyitem>.
         NOT_HAVE_ENOUGH_GIL          = 6553, -- You do not have enough gil.
+        YOU_OBTAIN_ITEM              = 6554, -- You obtain  <item>!
         YOU_MUST_WAIT_ANOTHER_N_DAYS = 6584, -- You must wait another <number> [day/days] to perform that action.
         CARRIED_OVER_POINTS          = 6587, -- You have carried over <number> login point[/s].
         LOGIN_CAMPAIGN_UNDERWAY      = 6588, -- The [/January/February/March/April/May/June/July/August/September/October/November/December] <number> Login Campaign is currently underway!<space>
@@ -74,7 +75,12 @@ zones[tpz.zone.WINDURST_WOODS] =
         CLOUD_BAD_ITEM               = 10123, -- What the hell is this junk!? Why don't you try bringin' what I asked for before I shove one of my sandals up your...nose!
         CHOCOBO_DIALOG               = 10417, -- Kweh!
         TRRRADE_IN_SPARKS            = 13834, -- You want to trrrade in sparks, do you?
+        DO_NOT_POSSESS_ENOUGH        = 13853, -- You do not possess enough <item> to complete the transaction.
         NOT_ENOUGH_SPARKS            = 13854, -- You do not possess enough sparks of eminence to complete the transaction.
+        MAX_SPARKS_LIMIT_REACHED     = 13855, -- You have reached the maximum number of sparks that you can exchange this week (<number>). Your ability to purchase skill books and equipment will be restricted until next week.
+        YOU_NOW_HAVE_AMT_CURRENCY    = 13865, -- You now have <number> [sparks of eminence/conquest points/points of imperial standing/Allied Notes/bayld/Fields of Valor points/assault points (Leujaoam)/assault points (Mamool Ja Training Grounds)/assault points (Lebros Cavern)/assault points (Periqia)/assault points (Ilrusi Atoll)/cruor/kinetic units/obsidian fragments/mweya plasm corpuscles/ballista points/Unity accolades/pinches of Escha silt/resistance credits].
+        YOU_HAVE_JOINED_UNITY        = 14374, -- You have joined [Pieuje's/Ayame's/Invincible Shield's/Apururu's/Maat's/Aldo's/Jakoh Wahcondalo's/Naja Salaheem's/Flaviria's/Yoran-Oran's/Sylvie's] Unity!
+        HAVE_ALREADY_CHANGED_UNITY   = 14450, -- You have already changed Unities. Please wait until the next tabulation period.
     },
     mob =
     {

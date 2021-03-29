@@ -355,14 +355,15 @@ void CAIContainer::Tick(time_point _tick)
     m_Tick     = _tick;
 
     //#TODO: timestamp in the event?
-    EventHandler.triggerListener("TICK", PEntity);
+    EventHandler.triggerListener("TICK", CLuaBaseEntity(PEntity));
     PEntity->Tick(_tick);
 
     //#TODO: check this in the controller instead maybe? (might not want to check every tick)
     ActionQueue.checkAction(_tick);
 
     // check pathfinding only if there is no controller to do it
-    if (!Controller && CanFollowPath())
+    bool isPathingPaused = PEntity->GetLocalVar("pauseNPCPathing");
+    if (!Controller && CanFollowPath() && !isPathingPaused)
     {
         PathFind->FollowPath();
         if (PathFind->OnPoint())

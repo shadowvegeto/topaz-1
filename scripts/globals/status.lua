@@ -1,16 +1,16 @@
 require("scripts/globals/world")
 
-------------------------------------
+-----------------------------------
 --
 -- STATUSES AND MODS
 --
 -- Contains variable-ized definitions of things like core enums for use in lua scripts.
-------------------------------------
+-----------------------------------
 tpz = tpz or {}
 
-------------------------------------
+-----------------------------------
 -- Zone Misc Flags
-------------------------------------
+-----------------------------------
 
 tpz.zoneMisc =
 {
@@ -29,9 +29,9 @@ tpz.zoneMisc =
     TRUST      = 0x0800, -- Ability to cast trust magic
 }
 
-------------------------------------
+-----------------------------------
 -- Job IDs
-------------------------------------
+-----------------------------------
 
 tpz.job =
 {
@@ -61,9 +61,9 @@ tpz.job =
 }
 tpz.MAX_JOB_TYPE = 23
 
-------------------------------------
+-----------------------------------
 -- Race IDs
-------------------------------------
+-----------------------------------
 
 tpz.race =
 {
@@ -77,9 +77,9 @@ tpz.race =
     GALKA    = 8,
 }
 
-------------------------------------
+-----------------------------------
 -- STATUSES
-------------------------------------
+-----------------------------------
 
 tpz.status =
 {
@@ -93,10 +93,10 @@ tpz.status =
     SHUTDOWN        = 20,
 }
 
-------------------------------------
+-----------------------------------
 -- These codes represent the subeffects for
 -- additional effects animations from battleentity.h
-------------------------------------
+-----------------------------------
 
 tpz.subEffect =
 {
@@ -166,10 +166,10 @@ tpz.subEffect =
     IMPACTION           = 14,
 }
 
-------------------------------------
+-----------------------------------
 -- These codes represent the actual status effects.
 -- They are simply for convenience.
-------------------------------------
+-----------------------------------
 
 tpz.effect =
 {
@@ -825,9 +825,9 @@ tpz.effect =
     -- PLACEHOLDER             = 1023 -- The client dat file seems to have only this many "slots", results of exceeding that are untested.
 }
 
-----------------------------------
+-----------------------------------
 -- SC masks (not currently used in code base)
-----------------------------------
+-----------------------------------
 
 -- EFFECT_SKILLCHAIN0    = 0x200
 -- EFFECT_SKILLCHAIN1    = 0x400
@@ -837,9 +837,9 @@ tpz.effect =
 -- EFFECT_SKILLCHAIN5    = 0x4000
 -- EFFECT_SKILLCHAINMASK = 0x7C00
 
-------------------------------------
+-----------------------------------
 -- Effect Flags
-------------------------------------
+-----------------------------------
 
 tpz.effectFlag =
 {
@@ -873,7 +873,7 @@ tpz.effectFlag =
     AURA            = 0x4000000,
 }
 
-------------------------------------
+-----------------------------------
 
 function removeSleepEffects(target)
     target:delStatusEffect(tpz.effect.SLEEP_I)
@@ -885,7 +885,7 @@ function hasSleepEffects(target)
     return target:hasStatusEffect(tpz.effect.SLEEP_I) or target:hasStatusEffect(tpz.effect.SLEEP_II) or target:hasStatusEffect(tpz.effect.LULLABY)
 end
 
-------------------------------------
+-----------------------------------
 -- These values are the codes that represent any statistic possible on an entity.
 -- These are NOT the actual status effects such as weakness or silence,
 -- but rather arbitrary codes chosen to represent different modifiers to the effected characters and mobs.
@@ -894,7 +894,7 @@ end
 --
 -- Example: target:getMod(tpz.mod.STR) will get the sum of STR bonuses/penalties from gear, food, STR Etude, Absorb-STR, and any other STR-related buff/debuff.
 -- Note that the above will ignore base statistics, and that getStat() should be used for stats, Attack, and Defense, while getACC(), getRACC(), and getEVA() also exist.
-------------------------------------
+-----------------------------------
 
 tpz.mod =
 {
@@ -1580,9 +1580,9 @@ tpz.mod =
     WYVERN_SUBJOB_TRAITS            = 974, -- Adds subjob traits to wyvern
     GARDENING_WILT_BONUS            = 975, -- Increases the number of Vanadays a plant can survive before it wilts
 
+    WYVERN_BREATH_MACC              = 986,
     -- The spares take care of finding the next ID to use so long as we don't forget to list IDs that have been freed up by refactoring.
     -- 570 - 825 used by WS DMG mods these are not spares.
-    -- SPARE = 986, -- stuff
     -- SPARE = 987, -- stuff
     -- SPARE = 988, -- stuff
 }
@@ -1651,9 +1651,9 @@ tpz.latent =
     VS_FAMILY                = 60, -- Vs. Specific Family ID (e.g. Vs. Apkallu: Accuracy+3)
 }
 
-------------------------------------
+-----------------------------------
 -- Merits
-------------------------------------
+-----------------------------------
 
 local MCATEGORY_HP_MP      = 0x0040
 local MCATEGORY_ATTRIBUTES = 0x0080
@@ -1711,7 +1711,7 @@ local MCATEGORY_COR_2 = 0x0C00
 local MCATEGORY_PUP_2 = 0x0C40
 local MCATEGORY_DNC_2 = 0x0C80
 local MCATEGORY_SCH_2 = 0x0CC0
-local MCATEGORY_UNK_2 = 0x0D00
+local MCATEGORY_UNK_4 = 0x0D00
 local MCATEGORY_GEO_2 = 0x0D40
 local MCATEGORY_RUN_2 = 0x0D80
 
@@ -1926,6 +1926,13 @@ tpz.merit =
     BLAZE_OF_GLORY_RECAST       = MCATEGORY_GEO_1 + 0x06,
     DEMATERIALIZE_RECAST        = MCATEGORY_GEO_1 + 0x08,
 
+    -- RUN 1
+    MERIT_RUNE_ENHANCE          = MCATEGORY_RUN_1 + 0x00,
+    MERIT_VALLATION_EFFECT      = MCATEGORY_RUN_1 + 0x02,
+    MERIT_LUNGE_EFFECT          = MCATEGORY_RUN_1 + 0x04,
+    MERIT_PFLUG_EFFECT          = MCATEGORY_RUN_1 + 0x06,
+    MERIT_GAMBIT_EFFECT         = MCATEGORY_RUN_1 + 0x08,
+
     -- WEAPON SKILLS
     SHIJIN_SPIRAL               = MCATEGORY_WS + 0x00,
     EXENTERATOR                 = MCATEGORY_WS + 0x02,
@@ -2052,7 +2059,7 @@ tpz.merit =
     DEEP_BREATHING              = MCATEGORY_DRG_2 + 0x00,
     ANGON                       = MCATEGORY_DRG_2 + 0x02,
     EMPATHY                     = MCATEGORY_DRG_2 + 0x04,
-    STRAFE                      = MCATEGORY_DRG_2 + 0x06,
+    STRAFE_EFFECT               = MCATEGORY_DRG_2 + 0x06,
 
     -- SMN 2
     METEOR_STRIKE               = MCATEGORY_SMN_2 + 0x00,
@@ -2094,16 +2101,22 @@ tpz.merit =
     ENLIGHTENMENT               = MCATEGORY_SCH_2 + 0x08,
     STORMSURGE                  = MCATEGORY_SCH_2 + 0x0A,
 
-        -- GEO 2
+    -- GEO 2
     MENDING_HALATION            = MCATEGORY_GEO_2 + 0x00,
     RADIAL_ARCANA               = MCATEGORY_GEO_2 + 0x02,
     CURATIVE_RECANTATION        = MCATEGORY_GEO_2 + 0x04,
     PRIMEVAL_ZEAL               = MCATEGORY_GEO_2 + 0x06,
+
+    -- RUN 2
+    MERIT_BATTUTA               = MCATEGORY_RUN_2 + 0x00,
+    MERIT_RAYKE                 = MCATEGORY_RUN_2 + 0x02,
+    MERIT_INSPIRATION           = MCATEGORY_RUN_2 + 0x04,
+    MERIT_SLEIGHT_OF_SWORD      = MCATEGORY_RUN_2 + 0x06,
 }
 
-------------------------------------
+-----------------------------------
 -- Inventory locations
-------------------------------------
+-----------------------------------
 
 tpz.inventoryLocation =
 {
@@ -2123,9 +2136,9 @@ tpz.inventoryLocation =
 }
 tpz.inv = tpz.inventoryLocation
 
-------------------------------------
+-----------------------------------
 -- Equipment Slots
-------------------------------------
+-----------------------------------
 
 tpz.slot =
 {
@@ -2148,9 +2161,9 @@ tpz.slot =
 }
 tpz.MAX_SLOTID  = 15
 
-----------------------------------
+-----------------------------------
 -- Objtype Definitions
-----------------------------------
+-----------------------------------
 
 tpz.objType =
 {
@@ -2163,9 +2176,9 @@ tpz.objType =
     FELLOW = 0x40,
 }
 
-----------------------------------
+-----------------------------------
 -- Attack Type
-----------------------------------
+-----------------------------------
 
 tpz.attackType =
 {
@@ -2177,9 +2190,9 @@ tpz.attackType =
     BREATH   = 5,
 }
 
-----------------------------------
+-----------------------------------
 -- Damage Type
-----------------------------------
+-----------------------------------
 
 tpz.damageType =
 {
@@ -2199,18 +2212,18 @@ tpz.damageType =
     DARK      = 13,
 }
 
-----------------------------------
+-----------------------------------
 -- Drop Type (not currently used in code base)
-----------------------------------
+-----------------------------------
 
 -- DROP_NORMAL  = 0x00
 -- DROP_GROUPED = 0x01
 -- DROP_STEAL   = 0x02
 -- DROP_DESPOIL = 0x04
 
-----------------------------------
+-----------------------------------
 -- Allegiance
-----------------------------------
+-----------------------------------
 
 tpz.allegiance =
 {
@@ -2221,9 +2234,9 @@ tpz.allegiance =
     WINDURST  = 4,
 }
 
-----------------------------------
+-----------------------------------
 -- Targetting for auras relative to objtype
-----------------------------------
+-----------------------------------
 
 tpz.auraTarget =
 {
@@ -2231,11 +2244,11 @@ tpz.auraTarget =
     ENEMIES = 1,
 };
 
-------------------------------------
+-----------------------------------
 -- MOBMODs
 -- maps src/map/mob_modifier.h
 -- always edit both
-------------------------------------
+-----------------------------------
 
 tpz.mobMod =
 {
@@ -2312,9 +2325,9 @@ tpz.mobMod =
     NO_REST             = 70, -- Mob cannot regain hp (e.g. re-burrowing antlions during ENM).
 }
 
-------------------------------------
+-----------------------------------
 -- Job Specials (1hr / 2hr moves)
-------------------------------------
+-----------------------------------
 
 tpz.jobSpecialAbility =
 {
@@ -2421,9 +2434,9 @@ tpz.jobSpecialAbility =
 }
 tpz.jsa = tpz.jobSpecialAbility
 
-------------------------------------
+-----------------------------------
 -- Skills
-------------------------------------
+-----------------------------------
 
 tpz.skill =
 {
@@ -2491,9 +2504,9 @@ tpz.skill =
     -- MAX_SKILLTYPE = 64
 }
 
-------------------------------------
+-----------------------------------
 -- Craft Skill Ranks
-------------------------------------
+-----------------------------------
 
 tpz.craftRank =
 {
@@ -2516,9 +2529,9 @@ tpz.craftRank =
     -- 16+ invalid
 }
 
-------------------------------------
+-----------------------------------
 -- Recast IDs
-------------------------------------
+-----------------------------------
 
 tpz.recast =
 {
@@ -2527,9 +2540,9 @@ tpz.recast =
     ABILITY  = 2,
 }
 
-------------------------------------
+-----------------------------------
 -- ACTION IDs
-------------------------------------
+-----------------------------------
 
 tpz.action =
 {
@@ -2573,9 +2586,9 @@ tpz.action =
 }
 tpz.act = tpz.action
 
-------------------------------------
+-----------------------------------
 -- ECOSYSTEM IDs
-------------------------------------
+-----------------------------------
 
 tpz.ecosystem =
 {
@@ -2604,9 +2617,9 @@ tpz.ecosystem =
 }
 tpz.eco = tpz.ecosystem
 
-------------------------------------
+-----------------------------------
 -- Behavior bits
-------------------------------------
+-----------------------------------
 
 tpz.behavior =
 {
@@ -2618,9 +2631,9 @@ tpz.behavior =
     NO_TURN      = 0x400, -- mob does not turn to face target
 }
 
-------------------------------------
+-----------------------------------
 -- Elevator IDs
-------------------------------------
+-----------------------------------
 
 tpz.elevator =
 {
@@ -2630,7 +2643,7 @@ tpz.elevator =
     FORT_GHELSBA_LIFT         = 3
 }
 
-------------------------------------
+-----------------------------------
 -- Item Type
 -----------------------------------
 
@@ -2647,9 +2660,9 @@ tpz.itemType =
     LINKSHELL   = 0x80,
 }
 
-------------------------------------
+-----------------------------------
 -- Animations
-------------------------------------
+-----------------------------------
 
 tpz.animation =
 {
@@ -2692,9 +2705,9 @@ tpz.animation =
 }
 tpz.anim = tpz.animation
 
-------------------------------------
+-----------------------------------
 -- Mounts
-------------------------------------
+-----------------------------------
 
 tpz.mount =
 {
@@ -2726,11 +2739,14 @@ tpz.mount =
     ADAMANTOISE    = 25,
     DHAMEL         = 26,
     DOLL           = 27,
+    GOLDEN_BOMB    = 28,
+    BUFFALO        = 29,
+    WIVRE          = 30,
 }
 
-------------------------------------
+-----------------------------------
 -- Automaton Frame IDs
-------------------------------------
+-----------------------------------
 
 tpz.frames =
 {
@@ -2740,9 +2756,9 @@ tpz.frames =
     STORMWAKER = 0x23,
 }
 
-------------------------------------
+-----------------------------------
 -- Item Check Params
-------------------------------------
+-----------------------------------
 
 tpz.itemCheck =
 {
@@ -2751,9 +2767,9 @@ tpz.itemCheck =
     UNEQUIP = 2,
 }
 
-------------------------------------
+-----------------------------------
 -- Emote Values
-------------------------------------
+-----------------------------------
 tpz.emote =
 {
     POINT = 0,
@@ -2814,9 +2830,9 @@ tpz.emoteMode =
     MOTION = 2
 }
 
-------------------------------------
+-----------------------------------
 -- Relic/Mythic/Empyrean tables
-------------------------------------
+-----------------------------------
 
 tpz.relicIDs =
 {

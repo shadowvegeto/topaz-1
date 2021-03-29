@@ -140,6 +140,7 @@ struct map_config_t
     bool        audit_tell;
     bool        audit_yell;
     bool        audit_linkshell;
+    bool        audit_unity;
     bool        audit_party;
     uint8       healing_tick_delay;
     uint16      msg_server_port;        // central message server port
@@ -183,8 +184,6 @@ extern int32        map_fd;
 static constexpr float server_tick_rate = 2.5f;
 
 extern thread_local Sql_t* SqlHandle;
-
-extern CCommandHandler CmdHandler;
 
 typedef std::map<uint64, map_session_data_t*> map_session_list_t;
 extern map_session_list_t                     map_session_list;

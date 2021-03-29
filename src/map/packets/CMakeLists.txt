@@ -32,6 +32,8 @@ set(SOURCES
     char_check.h
     char_emotion.cpp
     char_emotion.h
+    char_emotion_jump.cpp
+    char_emotion_jump.h
     char_equip.cpp
     char_equip.h
     char_health.cpp
@@ -136,6 +138,8 @@ set(SOURCES
     menu_raisetractor.h
     merit_points_categories.cpp
     merit_points_categories.h
+    menu_unity.cpp
+    menu_unity.h
     message_basic.cpp
     message_basic.h
     message_combat.cpp

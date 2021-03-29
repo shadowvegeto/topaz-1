@@ -3,19 +3,26 @@
 --   NPC: Orudoba-Sondeba
 -- Type: Standard NPC
 -- !pos 70.086 -3.503 -69.939 239
---
--- Auto-Script: Requires Verification (Verfied by Brawndo)
 -----------------------------------
+require("scripts/globals/quests")
+-----------------------------------
+local entity = {}
 
-function onTrade(player, npc, trade)
+entity.onTrade = function(player, npc, trade)
 end
 
-function onTrigger(player, npc)
-    player:startEvent(43)
+entity.onTrigger = function(player, npc)
+    if player:getQuestStatus(tpz.quest.log_id.WINDURST, tpz.quest.id.windurst.THE_POSTMAN_ALWAYS_KO_S_TWICE) == QUEST_ACCEPTED then
+        player:startEvent(51)
+    else
+        player:startEvent(43)
+    end
 end
 
-function onEventUpdate(player, csid, option)
+entity.onEventUpdate = function(player, csid, option)
 end
 
-function onEventFinish(player, csid, option)
+entity.onEventFinish = function(player, csid, option)
 end
+
+return entity
